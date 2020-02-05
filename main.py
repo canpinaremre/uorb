@@ -129,7 +129,7 @@ def print_status():
 
 
 
-def takeOff(desitedAltitude):
+def takeOff(desiredAltitude):
     #takeoff to desired altitude
     return True
 
