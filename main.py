@@ -2,15 +2,11 @@ from dronekit import connect, Command, LocationGlobal,VehicleMode
 from pymavlink import mavutil
 import time, sys, argparse, math
 import threading
-
 import os
-#import argparse
 import cv2
 import numpy as np
-#import sys
-#import time
-#from threading import Thread
 import importlib.util
+
 """
 Not needed for now
 
@@ -19,8 +15,10 @@ import cv2
 import numpy as np
 import picamera
 """
+
 #################################### Connection String and vehicle connection
 """
+# For Jmavsim
 connection_string       = '127.0.0.1:14540'
 
 print ("Connecting")
@@ -87,10 +85,10 @@ class VideoStream:
         self.stopped = True
 
 ##################################### SETUP
-STM = FlagObject('N',1,"stm")
-ODTU = FlagObject('N',2,"metu")
-ORT = FlagObject('N',3,"ort")
-LAND = FlagObject('N',4,"landingfield")
+stm = FlagObject('N',1,"stm")
+metu = FlagObject('N',2,"metu")
+ort = FlagObject('N',3,"ort")
+landingfield = FlagObject('N',4,"landingfield")
 
 A = LandSiteObject(3.25,3.25,"N",'A')
 B = LandSiteObject(3.25,-3.25,"N",'B')
@@ -98,14 +96,19 @@ C = LandSiteObject(-3.25,-3.25,"N",'C')
 D = LandSiteObject(-3.25,3.25,"N",'D')
 
 land_sites = [A,B,C,D]
-flag_objects = [STM,ODTU,ORT,LAND]
+flag_objects = [stm,metu,ort,landingfield]
 
 
 x,y,z =0,0,0
+detected_flag_name = "empty for start"
+
+sure_percent_of_image = 0
 
 vision_altitude = 6 #meter
 
 distance_tolerance = 0.10 # meter
+
+threshold_for_tf = 0.6 # %60
 
 time_to_takeoff_again = 3 #second
 
@@ -132,9 +135,6 @@ def setpoint_buffer():
         vehicle.flush()
         time.sleep(0.3)
 
-
-
-
 # Define and parse input arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('--modeldir', help='Folder the .tflite file is located in',
@@ -144,7 +144,7 @@ parser.add_argument('--graph', help='Name of the .tflite file, if different than
 parser.add_argument('--labels', help='Name of the labelmap file, if different than labelmap.txt',
                     default='labelmap.txt')
 parser.add_argument('--threshold', help='Minimum confidence threshold for displaying detected objects',
-                    default=0.5)
+                    default=threshold_for_tf)
 parser.add_argument('--resolution', help='Desired webcam resolution in WxH. If the webcam does not support the resolution entered, errors may occur.',
                     default='640x480')
 parser.add_argument('--edgetpu', help='Use Coral Edge TPU Accelerator to speed up detection',
@@ -226,17 +226,15 @@ freq = cv2.getTickFrequency()
 
 # Initialize video stream
 videostream = VideoStream(resolution=(imW,imH),framerate=30).start()
-time.sleep(1)
+#time.sleep(1)
 
 #for frame1 in camera.capture_continuous(rawCapture, format="bgr",use_video_port=True):
 
-
-
 def tf_buffer():
-    global videostream,freq,frame_rate_calc,input_std,input_mean,floating_model,width,height,output_details,input_details,interpreter,use_TPU,labels,PATH_TO_LABELS,PATH_TO_CKPT,CWD_PATH,GRAPH_NAME,pkg,MODEL_NAME,LABELMAP_NAME,min_conf_threshold,resW,resH,imW,imH,args
+    global videostream,freq,frame_rate_calc,input_std,input_mean,floating_model,width,height,output_details,input_details,interpreter,use_TPU,labels,PATH_TO_LABELS,PATH_TO_CKPT,CWD_PATH,GRAPH_NAME,pkg,MODEL_NAME,LABELMAP_NAME,min_conf_threshold,resW,resH,imW,imH,args,detected_flag_name,sure_percent_of_image
     while True:
         # Start timer (for calculating frame rate)
-        t1 = cv2.getTickCount()
+        #t1 = cv2.getTickCount()
 
         # Grab frame from video stream
         frame1 = videostream.read()
@@ -276,32 +274,29 @@ def tf_buffer():
 
                 # Draw label
                 object_name = labels[int(classes[i])] # Look up object name from "labels" array using class index
+                """
                 label = '%s: %d%%' % (object_name, int(scores[i]*100)) # Example: 'person: 72%'
                 labelSize, baseLine = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2) # Get font size
                 label_ymin = max(ymin, labelSize[1] + 10) # Make sure not to draw label too close to top of window
                 cv2.rectangle(frame, (xmin, label_ymin-labelSize[1]-10), (xmin+labelSize[0], label_ymin+baseLine-10), (255, 255, 255), cv2.FILLED) # Draw white box to put label text in
                 cv2.putText(frame, label, (xmin, label_ymin-7), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2) # Draw label text
-
+                """
+                detected_flag_name = object_name
+                sure_percent_of_image = int(scores[i]*100)
         # Draw framerate in corner of frame
-        cv2.putText(frame,'FPS: {0:.2f}'.format(frame_rate_calc),(30,50),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,0),2,cv2.LINE_AA)
+        #cv2.putText(frame,'FPS: {0:.2f}'.format(frame_rate_calc),(30,50),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,0),2,cv2.LINE_AA)
 
         # All the results have been drawn on the frame, so it's time to display it.
-        cv2.imshow('Object detector', frame)
+        #cv2.imshow('Object detector', frame)
 
         # Calculate framerate
-        t2 = cv2.getTickCount()
-        time1 = (t2-t1)/freq
-        frame_rate_calc= 1/time1
+        #t2 = cv2.getTickCount()
+        #time1 = (t2-t1)/freq
+        #frame_rate_calc= 1/time1
 
         # Press 'q' to quit
         if cv2.waitKey(1) == ord('q'):
-            break
-
-        
-
-       
-
-        
+            break    
 
 def land():
     print("Land !")
@@ -343,8 +338,6 @@ def startTfThread():
 
     tf.start()
 
-
-
 def startOffboardMode():
     while vehicle.mode != "OFFBOARD":
         vehicle._master.set_mode_px4('OFFBOARD',None,None)
@@ -366,6 +359,7 @@ def readyToTakeoff():
     print_status()
 
     return True
+
 def tryDisArming():
     #disarm
     return True
@@ -387,12 +381,19 @@ def goToLocation(xTarget,yTarget,altTarget):
     while not atTheTargetYet(xTarget,yTarget,altTarget):
         time.sleep(0.1)
 
-
-
     return True
 
 def defineTheFlag(landSiteLetter):
     #define the flag and write name of it to the landSite
+    
+    #after being sure of detection:
+    for land in land_sites:
+        if(land.letter == landSiteLetter):
+            land.flagName = detected_flag_name
+    
+    for flag in flag_objects:
+        if(flag.flagName == detected_flag_name):
+            flag.landSiteLetter = landSiteLetter
     
     return True 
 
@@ -405,7 +406,7 @@ def landWithVision(flagName):
 
 def rtl():
     goToLocation(0,0,-vision_altitude)
-    landWithVision("TurkBayragi")
+    landWithVision("turkishflag")
     #return to launch
     return True
 
@@ -413,7 +414,6 @@ def bodyToNedFrame(xBody,yBody,yawBody):
     xNed =  (xBody * math.cos(yawBody) ) - ( yBody * math.sin(yawBody) )
     yNed =  (xBody * math.sin(yawBody) ) + ( yBody * math.cos(yawBody) )
     return xNed,yNed
-
 
 def atTheTargetYet(xTarget,yTarget,zTarget):
     global startYaw,distance_tolerance
@@ -433,7 +433,6 @@ def atTheTargetYet(xTarget,yTarget,zTarget):
     print("Not at target yet")
     return False
 
-
 ##################################### START
 home_position_set = False
 #Create a message listener for home position fix
@@ -449,13 +448,12 @@ while not home_position_set:
 
 
 startThread()
-startTfThread()
 
+startTfThread()
 
 readyToTakeoff()
 
 startYaw = vehicle.attitude.yaw
-
 
 goToLocation(0,0,vision_altitude) # take off
 
@@ -485,5 +483,3 @@ while True:
                         readyToTakeoff()
                         
                         i += 1
-
-
