@@ -2,14 +2,9 @@ from dronekit import connect, Command, LocationGlobal,VehicleMode
 from pymavlink import mavutil
 import time, sys, argparse, math
 import threading
-
 import os
-#import argparse
 import cv2
 import numpy as np
-#import sys
-#import time
-#from threading import Thread
 import importlib.util
 """
 Not needed for now
@@ -87,10 +82,10 @@ class VideoStream:
         self.stopped = True
 
 ##################################### SETUP
-STM = FlagObject('N',1,"STM")
-ODTU = FlagObject('N',2,"ODTU")
-ORT = FlagObject('N',3,"ORT")
-LAND = FlagObject('N',4,"LAND")
+stm = FlagObject('N',1,"stm")
+metu = FlagObject('N',2,"metu")
+ort = FlagObject('N',3,"ort")
+landingfield = FlagObject('N',4,"landingfield")
 
 A = LandSiteObject(3.25,3.25,"N",'A')
 B = LandSiteObject(3.25,-3.25,"N",'B')
@@ -98,12 +93,13 @@ C = LandSiteObject(-3.25,-3.25,"N",'C')
 D = LandSiteObject(-3.25,3.25,"N",'D')
 
 land_sites = [A,B,C,D]
-flag_objects = [STM,ODTU,ORT,LAND]
+flag_objects = [stm,metu,ort,landingfield]
 
 
 x,y,z =0,0,0
 
-vision_altitude = 6 #meter
+#8 daha garanti. çünkü 3.25x3.25 ile fazla yaklaşmıyoruz kutunun üzerine
+vision_altitude = 8 #meter
 
 distance_tolerance = 0.10 # meter
 
@@ -132,9 +128,6 @@ def setpoint_buffer():
         vehicle.flush()
         time.sleep(0.3)
 
-
-
-
 # Define and parse input arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('--modeldir', help='Folder the .tflite file is located in',
@@ -146,7 +139,7 @@ parser.add_argument('--labels', help='Name of the labelmap file, if different th
 parser.add_argument('--threshold', help='Minimum confidence threshold for displaying detected objects',
                     default=0.5)
 parser.add_argument('--resolution', help='Desired webcam resolution in WxH. If the webcam does not support the resolution entered, errors may occur.',
-                    default='1280x720')
+                    default='640x480') #resolution 640x480
 parser.add_argument('--edgetpu', help='Use Coral Edge TPU Accelerator to speed up detection',
                     action='store_true')
 
@@ -226,7 +219,7 @@ freq = cv2.getTickFrequency()
 
 # Initialize video stream
 videostream = VideoStream(resolution=(imW,imH),framerate=30).start()
-time.sleep(1)
+#time.sleep(1) -> timesleep e gerek yok çünkü ilk kalkışta görüntü görmesek de olur. commentout kalsın
 
 #for frame1 in camera.capture_continuous(rawCapture, format="bgr",use_video_port=True):
 
@@ -236,7 +229,7 @@ def tf_buffer():
     global videostream,freq,frame_rate_calc,input_std,input_mean,floating_model,width,height,output_details,input_details,interpreter,use_TPU,labels,PATH_TO_LABELS,PATH_TO_CKPT,CWD_PATH,GRAPH_NAME,pkg,MODEL_NAME,LABELMAP_NAME,min_conf_threshold,resW,resH,imW,imH,args
     while True:
         # Start timer (for calculating frame rate)
-        t1 = cv2.getTickCount()
+        #t1 = cv2.getTickCount() -> bu sayaca da gerek yok commentout kalsın
 
         # Grab frame from video stream
         frame1 = videostream.read()
@@ -272,26 +265,33 @@ def tf_buffer():
                 ymax = int(min(imH,(boxes[i][2] * imH)))
                 xmax = int(min(imW,(boxes[i][3] * imW)))
             
-                cv2.rectangle(frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 2)
+		# bulunan yerin etrafına dikdörtgen çizmek için. commentout kalsın
+                #cv2.rectangle(frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 2)
 
                 # Draw label
                 object_name = labels[int(classes[i])] # Look up object name from "labels" array using class index
-                label = '%s: %d%%' % (object_name, int(scores[i]*100)) # Example: 'person: 72%'
-                labelSize, baseLine = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2) # Get font size
-                label_ymin = max(ymin, labelSize[1] + 10) # Make sure not to draw label too close to top of window
-                cv2.rectangle(frame, (xmin, label_ymin-labelSize[1]-10), (xmin+labelSize[0], label_ymin+baseLine-10), (255, 255, 255), cv2.FILLED) # Draw white box to put label text in
-                cv2.putText(frame, label, (xmin, label_ymin-7), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2) # Draw label text
+		
+		# commentout kalsın 5 satır. görselleştirmek için
+                #label = '%s: %d%%' % (object_name, int(scores[i]*100)) # Example: 'person: 72%'
+                #labelSize, baseLine = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2) # Get font size
+                #label_ymin = max(ymin, labelSize[1] + 10) # Make sure not to draw label too close to top of window
+                #cv2.rectangle(frame, (xmin, label_ymin-labelSize[1]-10), (xmin+labelSize[0], label_ymin+baseLine-10), (255, 255, 255), cv2.FILLED) # Draw white box to put label text in
+                #cv2.putText(frame, label, (xmin, label_ymin-7), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2) # Draw label text
 
+	# görselleştirme. commentout kalsın
         # Draw framerate in corner of frame
-        cv2.putText(frame,'FPS: {0:.2f}'.format(frame_rate_calc),(30,50),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,0),2,cv2.LINE_AA)
+        #cv2.putText(frame,'FPS: {0:.2f}'.format(frame_rate_calc),(30,50),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,0),2,cv2.LINE_AA)
 
+	# görselleştirme. commentout kalsın
         # All the results have been drawn on the frame, so it's time to display it.
-        cv2.imshow('Object detector', frame)
+        #cv2.imshow('Object detector', frame)
 
+	
+	# fps hesabı. commentout kalsın
         # Calculate framerate
-        t2 = cv2.getTickCount()
-        time1 = (t2-t1)/freq
-        frame_rate_calc= 1/time1
+        #t2 = cv2.getTickCount()
+        #time1 = (t2-t1)/freq
+        #frame_rate_calc= 1/time1
 
         # Press 'q' to quit
         if cv2.waitKey(1) == ord('q'):
@@ -303,6 +303,12 @@ def tf_buffer():
 
         
 
+	
+	#land fonksiyonunda sadece land moda geçmesini kontrol ediyor.
+	#land olmamış olabilir sadece 2sn bekliyor
+	#px4ten land oldu bilgisini kontrol etmemiz gerekiyor
+	#dronekit??
+	#aşağıdaki vehicle.armed == True gibi bir şey lazım
 def land():
     print("Land !")
     while vehicle.mode != "LAND":
@@ -364,8 +370,8 @@ def readyToTakeoff():
     tryArming()
     startOffboardMode()
     print_status()
-
     return True
+
 def tryDisArming():
     #disarm
     return True
@@ -386,14 +392,19 @@ def goToLocation(xTarget,yTarget,altTarget):
 
     while not atTheTargetYet(xTarget,yTarget,altTarget):
         time.sleep(0.1)
-
-
-
+	
     return True
 
 def defineTheFlag(landSiteLetter):
     #define the flag and write name of it to the landSite
-    
+    for land in land_sites:
+        if (land.letter == landSiteLetter):
+            lan.flagName = object_name
+
+    for flag in flag_objects:
+        if (flag.flagName == object_name):
+            flag.landSiteLetter = object_name
+
     return True 
 
 def landWithVision(flagName):
@@ -405,7 +416,7 @@ def landWithVision(flagName):
 
 def rtl():
     goToLocation(0,0,-vision_altitude)
-    landWithVision("TurkBayragi")
+    landWithVision("turkishflag")
     #return to launch
     return True
 
@@ -418,16 +429,16 @@ def bodyToNedFrame(xBody,yBody,yawBody):
 def atTheTargetYet(xTarget,yTarget,zTarget):
     global startYaw,distance_tolerance
     #goto desired locaiton
-    
     xTarget,yTarget = bodyToNedFrame(xTarget,yTarget,startYaw)
     zTarget = -zTarget
 
     north = vehicle.location.local_frame.north
     east = vehicle.location.local_frame.east
     down = vehicle.location.local_frame.down
-    if (abs(xTarget-north) < distance_tolerance):
-        if(abs(yTarget-east) < distance_tolerance):
-            if (abs(zTarget-down) < distance_tolerance):
+    #if (abs(xTarget-north) < distance_tolerance):
+    #	if(abs(yTarget-east) < distance_tolerance):
+    #		if (abs(zTarget-down) < distance_tolerance):
+    if((abs(xTarget-north) < distance_tolerance) & (abs(yTarget-east) < distance_tolerance) & (abs(zTarget-down) < distance_tolerance))
                 print("Target point reached")#add x y z
                 return True
     print("Not at target yet")
@@ -450,7 +461,6 @@ while not home_position_set:
 
 startThread()
 startTfThread()
-
 
 readyToTakeoff()
 
@@ -485,5 +495,3 @@ while True:
                         readyToTakeoff()
                         
                         i += 1
-
-
