@@ -102,7 +102,9 @@ flag_objects = [stm,metu,ort,landingfield]
 x,y,z =0,0,0
 detected_flag_name = "empty for start"
 
-sure_percent_of_image = 0
+number_of_detection = 0
+
+number_of_being_sure = 3 #how many detections in a row to be sure
 
 vision_altitude = 6 #meter
 
@@ -231,7 +233,7 @@ videostream = VideoStream(resolution=(imW,imH),framerate=30).start()
 #for frame1 in camera.capture_continuous(rawCapture, format="bgr",use_video_port=True):
 
 def tf_buffer():
-    global videostream,freq,frame_rate_calc,input_std,input_mean,floating_model,width,height,output_details,input_details,interpreter,use_TPU,labels,PATH_TO_LABELS,PATH_TO_CKPT,CWD_PATH,GRAPH_NAME,pkg,MODEL_NAME,LABELMAP_NAME,min_conf_threshold,resW,resH,imW,imH,args,detected_flag_name,sure_percent_of_image
+    global videostream,freq,frame_rate_calc,input_std,input_mean,floating_model,width,height,output_details,input_details,interpreter,use_TPU,labels,PATH_TO_LABELS,PATH_TO_CKPT,CWD_PATH,GRAPH_NAME,pkg,MODEL_NAME,LABELMAP_NAME,min_conf_threshold,resW,resH,imW,imH,args,detected_flag_name,number_of_detection
     while True:
         # Start timer (for calculating frame rate)
         #t1 = cv2.getTickCount()
@@ -282,7 +284,7 @@ def tf_buffer():
                 cv2.putText(frame, label, (xmin, label_ymin-7), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2) # Draw label text
                 """
                 detected_flag_name = object_name
-                sure_percent_of_image = int(scores[i]*100)
+                number_of_detection += 1
         # Draw framerate in corner of frame
         #cv2.putText(frame,'FPS: {0:.2f}'.format(frame_rate_calc),(30,50),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,0),2,cv2.LINE_AA)
 
@@ -385,14 +387,35 @@ def goToLocation(xTarget,yTarget,altTarget):
 
 def defineTheFlag(landSiteLetter):
     #define the flag and write name of it to the landSite
-    
+    global detected_flag_name,number_of_detection,number_of_being_sure
+
+    sure_counter = 0
+
+    temp_flag_name = detected_flag_name
+    temp_number = number_of_detection
+
+    while True:
+        if number_of_detection > temp_number:
+            if detected_flag_name == temp_flag_name:
+                sure_counter +=1
+                temp_number = number_of_detection
+                if sure_counter >= number_of_being_sure:
+                    break
+            else:
+                sure_counter = 0
+                temp_flag_name = detected_flag_name
+                temp_number = number_of_detection
+        time.sleep(0.1)
+
+
+
     #after being sure of detection:
     for land in land_sites:
         if(land.letter == landSiteLetter):
-            land.flagName = detected_flag_name
+            land.flagName = temp_flag_name
     
     for flag in flag_objects:
-        if(flag.flagName == detected_flag_name):
+        if(flag.flagName == temp_flag_name):
             flag.landSiteLetter = landSiteLetter
     
     return True 
