@@ -9,7 +9,6 @@ import importlib.util
 
 """
 Not needed for now
-
 from statistics import mean
 import cv2
 import numpy as np
@@ -20,7 +19,6 @@ import picamera
 """
 # For Jmavsim
 connection_string       = '127.0.0.1:14540'
-
 print ("Connecting")
 vehicle = connect(connection_string, wait_ready=True)
 """
@@ -90,10 +88,11 @@ metu = FlagObject('N',2,"metu")
 ort = FlagObject('N',3,"ort")
 landingfield = FlagObject('N',4,"landingfield")
 
-A = LandSiteObject(3.25,3.25,"N",'A')
-B = LandSiteObject(3.25,-3.25,"N",'B')
-C = LandSiteObject(-3.25,-3.25,"N",'C')
-D = LandSiteObject(-3.25,3.25,"N",'D')
+# -> 5.5/2 + 1/2 orta kutunun ortasından köşedeki kutunun ortasına
+A = LandSiteObject(2.75,2.75,"N",'A')
+B = LandSiteObject(2.75,-2.75,"N",'B')
+C = LandSiteObject(-2.75,-2.75,"N",'C')
+D = LandSiteObject(-2.75,2.75,"N",'D')
 
 land_sites = [A,B,C,D]
 flag_objects = [stm,metu,ort,landingfield]
@@ -220,9 +219,10 @@ floating_model = (input_details[0]['dtype'] == np.float32)
 input_mean = 127.5
 input_std = 127.5
 
+# -> buralar da fps hesabı için. -> commentout
 # Initialize frame rate calculation
-frame_rate_calc = 1
-freq = cv2.getTickFrequency()
+#frame_rate_calc = 1
+#freq = cv2.getTickFrequency()
 
 # Initialize video stream
 videostream = VideoStream(resolution=(imW,imH),framerate=30).start()
@@ -231,7 +231,9 @@ videostream = VideoStream(resolution=(imW,imH),framerate=30).start()
 #for frame1 in camera.capture_continuous(rawCapture, format="bgr",use_video_port=True):
 
 def tf_buffer():
-    global videostream,freq,frame_rate_calc,input_std,input_mean,floating_model,width,height,output_details,input_details,interpreter,use_TPU,labels,PATH_TO_LABELS,PATH_TO_CKPT,CWD_PATH,GRAPH_NAME,pkg,MODEL_NAME,LABELMAP_NAME,min_conf_threshold,resW,resH,imW,imH,args,detected_flag_name,sure_percent_of_image
+    # -> alttaki iki değer 10 satır yukarıda commentout oldu
+    #global freq,frame_rate_calc
+    global videostream,input_std,input_mean,floating_model,width,height,output_details,input_details,interpreter,use_TPU,labels,PATH_TO_LABELS,PATH_TO_CKPT,CWD_PATH,GRAPH_NAME,pkg,MODEL_NAME,LABELMAP_NAME,min_conf_threshold,resW,resH,imW,imH,args,detected_flag_name,sure_percent_of_image
     while True:
         # Start timer (for calculating frame rate)
         #t1 = cv2.getTickCount()
@@ -308,6 +310,11 @@ def land():
     print ("Landed!")
 
 def tryArming():
+    #while not vehicle.armed
+    #   print("Arming!!!")
+    #   vehicle.armed = True
+    #print("Armed... -> vehicle.armed: ", vehicle.armed)
+
     while True:
         vehicle._master.mav.command_long_send(
         1, # autopilot system id
@@ -362,6 +369,12 @@ def readyToTakeoff():
 
 def tryDisArming():
     #disarm
+    while vehicle.armed
+        print("Disarming!!!")
+        vehicle.armed = False
+
+    print("Disarmed... -> vehicle.armed: ", vehicle.armed)
+    
     return True
 
 def shutDownTheMotors():
@@ -399,6 +412,29 @@ def defineTheFlag(landSiteLetter):
 
 def landWithVision(flagName):
     #land with vision to the flag
+
+
+    # global variable tanımlamalıyız
+    # inilecek objenin ekrandaki alanından yükseklik tahmini yaparak
+    #tahmin->   kameranın matrisini çıkarmamız gerekebilir 
+    #           belirlediği objenin kenarlarının min max değerlerini alıyor
+    #           bu min max değerlerinin kameraya yaptığı düşümlerden o anki yüksekliği ile bağlantı kurarak
+    #           objeye olan uzaklığımızı hesaplayabiliriz
+    #           ->Tizianno nun aruco markerında bi kod olduğunu hatırlıyorum oradan olayı kavrayabiliriz
+    #            cv2.aruco içinde de olabilir saat 6:08 hazırlanmalıyım :)
+    # z ile kontrol edilen değere bu yüksekliği atamalıyız
+
+    if z == 2:
+        land()
+        return True
+
+    x = (tgt_x_mid - imW/2) * horizontal_fov/imW #bu matematik konusunda emin değilim, 
+    y = (tgt_y_mid - imH/2) * veritical_fov/imH # imW imH, horizontal-vertical resolution, width-height
+    z +=1
+    #konumu gps ile aldığımızdan kamera offsetli olacak 5-10 cm!!!
+
+    goToLocation(x,y,z) #bu değerleri düzenlemiştin sanırım şuan hatırlamıyorum
+
 
     #after landing
     shutDownTheMotors()
