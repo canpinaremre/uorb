@@ -364,6 +364,21 @@ def readyToTakeoff():
 
 def tryDisArming():
     #disarm
+    while True:
+        vehicle._master.mav.command_long_send(
+        1, # autopilot system id
+        1, # autopilot component id
+        400, # command id, ARM/DISARM
+        0, # confirmation
+        0, # arm!
+        0,0,0,0,0,0 # unused parameters for this command
+        )
+        print("Trying Disarming")
+        time.sleep(0.3)
+        if (vehicle.armed == False):
+            break
+    print ("Armed :",vehicle.armed)
+
     return True
 
 def shutDownTheMotors():
