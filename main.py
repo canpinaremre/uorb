@@ -102,7 +102,31 @@ flag_objects = [stm,metu,ort,landingfield]
 x,y,z =0,0,0
 detected_flag_name = "empty for start"
 
+center_of_object = 320,240 
+"""
+Obje ekranda sola doğru kaydığı zaman 320 olan yani ilk değer azaldı.
+x bizim için ilerisi demek olduğundan eksenler ters döndürülecek
+y,x = center_of_object
+şimdi x,y olarak baktığımızda obje sola doğru kaydığında y değeri azalıyor.
+sol taraf 0 en sağ taraf 640 demek (y ekseni)
+obje yukarı doğru giderken x azalıyor
+en üst taraf 0 en alt taraf 480 demek ( x ekseni)
+sol üst köşe 0,0 sağ alt köşe 480,640
+kamera düz bir şekilde drone altına takılırsa eğer
+üst kısım ilerisi alt kısım geriyi sağ sağı ve sol solu temsil eder.
+cisim kamerada üstte yani droneun ilerisinde gözüküyor ise drone ileri gitmelidir ortalamak için.
+x ekseninde hareket orta nokta olan 240 dan ne kadar az ise o kadar ileri.
+240-0 arası ise ileri
+y ekseni için cisim kamerada eğer sağ tarafta ise
+drone sağa gitmelidir.
+320 y ekseninin ortası olduğuna göre
+320 den ne kadar fazla ise o kadar sağa gitmelidir.cisim sağa gittikçe y ekseni artar çünkü.
+"""
 number_of_detection = 0
+
+pixel_square_of_image = 0
+
+pixel_square_needed = 172800 # 3/4 x 3/4
 
 number_of_being_sure = 3 #how many detections in a row to be sure
 
@@ -233,7 +257,8 @@ videostream = VideoStream(resolution=(imW,imH),framerate=30).start()
 #for frame1 in camera.capture_continuous(rawCapture, format="bgr",use_video_port=True):
 
 def tf_buffer():
-    global videostream,freq,frame_rate_calc,input_std,input_mean,floating_model,width,height,output_details,input_details,interpreter,use_TPU,labels,PATH_TO_LABELS,PATH_TO_CKPT,CWD_PATH,GRAPH_NAME,pkg,MODEL_NAME,LABELMAP_NAME,min_conf_threshold,resW,resH,imW,imH,args,detected_flag_name,number_of_detection
+    global videostream,freq,frame_rate_calc,input_std,input_mean,floating_model,width,height,output_details,input_details,interpreter,use_TPU,labels,PATH_TO_LABELS,PATH_TO_CKPT,CWD_PATH,GRAPH_NAME,pkg,MODEL_NAME,LABELMAP_NAME
+    global min_conf_threshold,resW,resH,imW,imH,args,detected_flag_name,number_of_detection,center_of_object,pixel_square_of_image
     while True:
         # Start timer (for calculating frame rate)
         #t1 = cv2.getTickCount()
@@ -272,7 +297,10 @@ def tf_buffer():
                 ymax = int(min(imH,(boxes[i][2] * imH)))
                 xmax = int(min(imW,(boxes[i][3] * imW)))
             
-                cv2.rectangle(frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 2)
+                #cv2.rectangle(frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 2)
+                pixel_square_of_image = (ymax - ymin) * (xmax - xmin)
+
+                center_of_object = int((xmin+xmax)/2),int((ymin+ymax)/2)
 
                 # Draw label
                 object_name = labels[int(classes[i])] # Look up object name from "labels" array using class index
@@ -355,6 +383,10 @@ def print_status():
     print (" Alt: %s" % vehicle.location.global_relative_frame.alt)
 
 def readyToTakeoff():
+    global drive_with_meter,drive_type
+
+    drive_type = drive_with_meter
+
     print_status()
     tryArming()
     startOffboardMode()
@@ -437,7 +469,37 @@ def defineTheFlag(landSiteLetter):
 
 def landWithVision(flagName):
     #land with vision to the flag
+    global center_of_object,detected_flag_name,number_of_detection,x,y,z,drive_type,drive_with_meter,drive_with_speed,pixel_square_of_image,pixel_square_needed,startYaw
 
+   
+    temp_number = number_of_detection
+
+    drive_type = drive_with_speed
+    x,y,z = 0,0,0
+
+    while True:
+        if number_of_detection > temp_number:
+            if detected_flag_name == flagName:
+                temp_number = number_of_detection
+                yCenter,xCenter = center_of_object
+
+                xPix = (240 - xCenter) * 0.004 #Max speed is 1 m/s
+                yPix = (yCenter - 320) * 0.003
+                
+                x,y = bodyToNedFrame(xPix,yPix,startYaw)
+                z = 0.2 # m/s down speed
+                if pixel_square_of_image >= pixel_square_needed:
+                    #go to land mode
+                    x,y,z = 0,0,0
+                    break
+        else:
+            #if there is no detection set all the speed to zero
+            x,y,z = 0,0,0
+        time.sleep(0.01)
+
+    
+    land()
+    drive_type = drive_with_meter
     #after landing
     shutDownTheMotors()
     return True
