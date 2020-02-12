@@ -481,10 +481,10 @@ def landWithVision(flagName):
         if number_of_detection > temp_number:
             if detected_flag_name == flagName:
                 temp_number = number_of_detection
-                yCenter,xCenter = center_of_object
+                yCenter,xCenter = center_of_object # y,x = center_of_object
 
                 xPix = (240 - xCenter) * 0.004 #Max speed is 1 m/s
-                yPix = (yCenter - 320) * 0.003
+                yPix = (yCenter - 320) * 0.003 #Max speed is 1 m/s
                 
                 x,y = bodyToNedFrame(xPix,yPix,startYaw)
                 z = 0.2 # m/s down speed
@@ -492,6 +492,10 @@ def landWithVision(flagName):
                     #go to land mode
                     x,y,z = 0,0,0
                     break
+            else:
+                temp_number = number_of_detection
+                #ignore wrong detections and wait with zero speed.
+                x,y,z = 0,0,0
         else:
             #if there is no detection set all the speed to zero
             x,y,z = 0,0,0
