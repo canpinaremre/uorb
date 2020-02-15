@@ -85,15 +85,15 @@ class VideoStream:
         self.stopped = True
 
 ##################################### SETUP
-stm = FlagObject('N',1,"stm")
-metu = FlagObject('N',2,"metu")
-ort = FlagObject('N',3,"ort")
-landingfield = FlagObject('N',4,"landingfield")
+stm = FlagObject("N",1,"stm")
+metu = FlagObject("N",2,"metu")
+ort = FlagObject("N",3,"ort")
+landingfield = FlagObject("N",4,"landingfield")
 
-A = LandSiteObject(3.25,3.25,"N",'A')
-B = LandSiteObject(3.25,-3.25,"N",'B')
-C = LandSiteObject(-3.25,-3.25,"N",'C')
-D = LandSiteObject(-3.25,3.25,"N",'D')
+A = LandSiteObject(3.25,3.25,"N","A")
+B = LandSiteObject(3.25,-3.25,"N","B")
+C = LandSiteObject(-3.25,-3.25,"N","C")
+D = LandSiteObject(-3.25,3.25,"N","D")
 
 land_sites = [A,B,C,D]
 flag_objects = [stm,metu,ort,landingfield]
@@ -129,6 +129,8 @@ pixel_square_of_image = 0
 pixel_square_needed = 172800 # 3/4 x 3/4
 
 number_of_being_sure = 3 #how many detections in a row to be sure
+
+counter_no_flag = 3 #cant see flag for this many time and velocity is zero
 
 vision_altitude = 6 #meter
 
@@ -428,7 +430,7 @@ def goToLocation(xTarget,yTarget,altTarget):
     z = -altTarget
 
     while not atTheTargetYet(xTarget,yTarget,altTarget):
-        time.sleep(0.1)
+        time.sleep(0.2)
 
     return True
 
@@ -445,6 +447,7 @@ def defineTheFlag(landSiteLetter):
         if number_of_detection > temp_number:
             if detected_flag_name == temp_flag_name:
                 sure_counter +=1
+                print("Detected flag ",temp_flag_name," ",sure_counter," times in a row.")
                 temp_number = number_of_detection
                 if sure_counter >= number_of_being_sure:
                     break
@@ -455,7 +458,7 @@ def defineTheFlag(landSiteLetter):
         time.sleep(0.1)
 
 
-
+    print("Defined flag is ",temp_flag_name," for land site ",landSiteLetter)
     #after being sure of detection:
     for land in land_sites:
         if(land.letter == landSiteLetter):
@@ -469,36 +472,45 @@ def defineTheFlag(landSiteLetter):
 
 def landWithVision(flagName):
     #land with vision to the flag
-    global center_of_object,detected_flag_name,number_of_detection,x,y,z,drive_type,drive_with_meter,drive_with_speed,pixel_square_of_image,pixel_square_needed,startYaw
+    global center_of_object,detected_flag_name,number_of_detection,x,y,z,drive_type,drive_with_meter,drive_with_speed,pixel_square_of_image,pixel_square_needed,startYaw,counter_no_flag
 
    
     temp_number = number_of_detection
 
     drive_type = drive_with_speed
     x,y,z = 0,0,0
-
+    no_flag = 0
     while True:
         if number_of_detection > temp_number:
             if detected_flag_name == flagName:
+                no_flag = 0
                 temp_number = number_of_detection
                 yCenter,xCenter = center_of_object # y,x = center_of_object
 
                 xPix = (240 - xCenter) * 0.004 #Max speed is 1 m/s
                 yPix = (yCenter - 320) * 0.003 #Max speed is 1 m/s
-                
+                print("Go forward :",xPix," m/s Go right :",yPix," m/s Go Down : 0.1 m/s")
                 x,y = bodyToNedFrame(xPix,yPix,startYaw)
-                z = 0.2 # m/s down speed
+                z = 0.1 # m/s down speed
                 if pixel_square_of_image >= pixel_square_needed:
                     #go to land mode
                     x,y,z = 0,0,0
                     break
             else:
                 temp_number = number_of_detection
+                no_flag += 1
+                print("Wrong flag")
                 #ignore wrong detections and wait with zero speed.
-                x,y,z = 0,0,0
+                if no_flag >= counter_no_flag:
+                    print("Velocity is zero")
+                    x,y,z = 0,0,0
         else:
+            print("There is no flag")
+            no_flag +=1
             #if there is no detection set all the speed to zero
-            x,y,z = 0,0,0
+            if no_flag >= counter_no_flag:
+                print("Velocity is zero")
+                x,y,z = 0,0,0
         time.sleep(0.01)
 
     
@@ -573,16 +585,19 @@ while True:
 
     for flag in flag_objects:
         if (flag.landOrder == i):
-            if(flag.landSiteLetter == 'N'):
-                for land in land_sites:
-                    if (land.flagName == 'N'):
-                        goToLocation(land.xCoordinate,land.yCoordinate,vision_altitude)
-                        defineTheFlag(land.letter)
+            if(flag.landSiteLetter == "N"):
+                for site in land_sites:
+                    if (site.flagName == "N"):
+                        goToLocation(site.xCoordinate,site.yCoordinate,vision_altitude)
+                        defineTheFlag(site.letter)
+                        break
             else:
-                for land in land_sites:
-                    if (flag.landSiteLetter == land.letter):
-                        goToLocation(land.xCoordinate,land.yCoordinate,vision_altitude)
+                for site in land_sites:
+                    if (flag.landSiteLetter == site.letter):
+                        print("Going to land in land site ",site.letter," for flag ",flag.flagName)
+                        goToLocation(site.xCoordinate,site.yCoordinate,vision_altitude)
                         landWithVision(flag.flagName)
+                        print("sleep for a while")
                         time.sleep(time_to_takeoff_again)
                         readyToTakeoff()
                         
