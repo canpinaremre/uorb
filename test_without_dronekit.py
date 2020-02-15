@@ -24,10 +24,10 @@ connection_string       = '127.0.0.1:14540'
 print ("Connecting")
 vehicle = connect(connection_string, wait_ready=True)
 """
-connection_string       = "/dev/ttyAMA0"
+connection_string       = "/dev/serial0"
 #Bağlantıyı yapıyoruz
 print ("Connecting")
-vehicle = connect(connection_string,baud=57600, wait_ready=True)
+vehicle = 0
 
 #objeleri tanımlıyoruz
 ##################################### Objects
@@ -75,15 +75,15 @@ class VideoStream:
         self.stopped = True
 #ayar kısmımız
 ##################################### SETUP
-stm = FlagObject('N',1,"stm")
-metu = FlagObject('N',2,"metu")
-ort = FlagObject('N',3,"ort")
-landingfield = FlagObject('N',4,"landingfield")
+stm = FlagObject("N",1,"stm")
+metu = FlagObject("N",2,"metu")
+ort = FlagObject("N",3,"ort")
+landingfield = FlagObject("N",4,"landingfield")
 
-A = LandSiteObject(3.25,3.25,"N",'A')
-B = LandSiteObject(3.25,-3.25,"N",'B')
-C = LandSiteObject(-3.25,-3.25,"N",'C')
-D = LandSiteObject(-3.25,3.25,"N",'D')
+A = LandSiteObject(3.25,3.25,"N","A")
+B = LandSiteObject(3.25,-3.25,"N","B")
+C = LandSiteObject(-3.25,-3.25,"N","C")
+D = LandSiteObject(-3.25,3.25,"N","D")
 
 land_sites = [A,B,C,D]
 flag_objects = [stm,metu,ort,landingfield]
@@ -118,13 +118,15 @@ pixel_square_of_image = 0
 
 pixel_square_needed = 172800 # 3/4 x 3/4
 
-number_of_being_sure = 3 #how many detections in a row to be sure
+number_of_being_sure = 6 #how many detections in a row to be sure
+
+counter_no_flag = 3
 
 vision_altitude = 6 #meter
 
 distance_tolerance = 0.10 # meter
 
-threshold_for_tf = 0.6 # %60
+threshold_for_tf = 0.7 # %60
 
 time_to_takeoff_again = 3 #second
 
@@ -138,17 +140,7 @@ drive_type = drive_with_meter #initial
 def setpoint_buffer():
     global x,y,z,drive_type
     while True:
-        msg=vehicle.message_factory.set_position_target_local_ned_encode(
-            0,
-            0,0,
-            mavutil.mavlink.MAV_FRAME_LOCAL_NED,
-            drive_type,
-            x,y,z,
-            x,y,z,
-            0,0,0,
-            0,0)
-        vehicle.send_mavlink(msg)
-        vehicle.flush()
+        
         time.sleep(0.3)
 
 parser = argparse.ArgumentParser()
@@ -393,8 +385,8 @@ def goToLocation(xTarget,yTarget,altTarget):#verilen lokasyona gidilmesini sağl
     while not atTheTargetYet(xTarget,yTarget,altTarget):
         time.sleep(0.1)
     """
-    print("normalde konuma gitmemizi bekliyoruz ancak şimdi 2 sn bekleyip onay gönderiyorum ve konuma varmışız gibi yapıyouz.")
-    time.sleep(2) #konuma gittiğimiz zamanmış gibi biraz bekliyoz orjinal kodda yok bu satır.
+    print("normalde konuma gitmemizi bekliyoruz ancak şimdi 10 sn bekleyip onay gönderiyorum ve konuma varmışız gibi yapıyouz.")
+    time.sleep(10) #konuma gittiğimiz zamanmış gibi biraz bekliyoz orjinal kodda yok bu satır.
     return True
 
 def defineTheFlag(landSiteLetter):
@@ -410,8 +402,12 @@ def defineTheFlag(landSiteLetter):
         if number_of_detection > temp_number:#önce hafızadaki detection yeni mi ona bakıyoruz eğer yeni ise devam değilse bekle
             if detected_flag_name == temp_flag_name:#eğer alınan yeni gönrütü hafızaya alınan geçici görüntü ile aynı ise counter 1 artar.
                 sure_counter +=1
+                print("bayrak görüldü 1 kere daha")
+                print(temp_flag_name)
                 temp_number = number_of_detection#number_of_detection > temp_number kontrolü için temp olarak alınır.
                 if sure_counter >= number_of_being_sure:#counter belli bir (number_of_being_sure) sayının üzerindeyse bayrağı kesin olarak alırız.
+                    print("bayraktan eminiz:")
+                    print(temp_flag_name)
                     break
             else:#eğer aldığımız yeni detection temp ile aynı bayrak değilse.temp i aldığımız yeni bayrak yaparız.
                 sure_counter = 0
@@ -424,53 +420,57 @@ def defineTheFlag(landSiteLetter):
     #after being sure of detection:bayrak kesinleştikten sonra temp de tuttuğumuz ama artık emin olduğumuz bayrağı
     for land in land_sites:
         if(land.letter == landSiteLetter):
+            print(land.letter," alanına ",temp_flag_name," yazıldı.")
             land.flagName = temp_flag_name#bulunduğumuz land'in flag name kısmına yazarız
     
     for flag in flag_objects:
         if(flag.flagName == temp_flag_name):
+            print(flag.flagName," bayrağına ",landSiteLetter," yazıldı.")
             flag.landSiteLetter = landSiteLetter#aynı zamanda bayrak objelerinden bulduğumuz bayrağa hangi land site da olduğumuzu söyleriz.
     
     return True 
 
 def landWithVision(flagName):
     #land with vision to the flag
-    global center_of_object,detected_flag_name,number_of_detection,x,y,z,drive_type,drive_with_meter,drive_with_speed,pixel_square_of_image,pixel_square_needed,startYaw
+    global center_of_object,detected_flag_name,number_of_detection,x,y,z,drive_type,drive_with_meter,drive_with_speed,pixel_square_of_image,pixel_square_needed,startYaw,counter_no_flag
 
-    
-    temp_number = number_of_detection#yine görüntü güncelliği için alıyouz.
+   
+    temp_number = number_of_detection
 
-    drive_type = drive_with_speed#artık hız ile sürüyoruz.
-    x,y,z = 0,0,0#başlangıç hızı 0
-
+    drive_type = drive_with_speed
+    x,y,z = 0,0,0
+    no_flag = 0
     while True:
-        if number_of_detection > temp_number:#eğer görüntü güncel ise,değilse 0.01 sn bekle
-            if detected_flag_name == flagName:#gördüğü bayrakta bizim ineceğimiz bayrak ise
+        if number_of_detection > temp_number:
+            if detected_flag_name == flagName:
+                no_flag = 0
                 temp_number = number_of_detection
                 yCenter,xCenter = center_of_object # y,x = center_of_object
-                #gerekli hesaplamalar ile orta noktaya olan mesafeye göre hız değerleri belirliyoruz.
+
                 xPix = (240 - xCenter) * 0.004 #Max speed is 1 m/s
                 yPix = (yCenter - 320) * 0.003 #Max speed is 1 m/s
-                #hız değerlerini NED frame'e çeviriyoruz ve yayınlıyoruz.
+                print("Go forward :",xPix," m/s Go right :",yPix," m/s Go Down : 0.1 m/s")
                 x,y = bodyToNedFrame(xPix,yPix,startYaw)
-                z = 0.2 # m/s down speed
-                print("x,y,z hızımız: (z pozitif çünkü ned frame için aşağı demek.değerler x,y,z cinsinden.Ned cinsinden olanalr kodda x,y,z değişkenleri ile global yayınlanıyor)")
-                print(xPix)
-                print(yPix)
-                print(z)
-                if pixel_square_of_image >= pixel_square_needed:#eğer ekrandaki görüntü yeteri kadar büyümüş ise yaklaştık demek.inişe geçmiş için döngüden çık.
+                z = 0.1 # m/s down speed
+                if pixel_square_of_image >= pixel_square_needed:
                     #go to land mode
-                    print("ekranda yeteri kadar çok pixel kapladı.İnişe geçiyorum.")
                     x,y,z = 0,0,0
                     break
-            else:#eğer yanlış,farklı bir bayrak görmüş ise hızı sıfırla ve yeni detection bekle.
+            else:
                 temp_number = number_of_detection
-                print("gördüğüm bayrak ineceğim bayrak değil o yüzden bekliyorum.")
+                no_flag += 1
+                print("Wrong flag")
                 #ignore wrong detections and wait with zero speed.
-                x,y,z = 0,0,0
-        else:#eğer hiç bayrak göremiyor isek hızı sıfırla ve yeni detection bekle.
+                if no_flag >= counter_no_flag:
+                    print("Velocity is zero")
+                    x,y,z = 0,0,0
+        else:
+            print("There is no flag")
+            no_flag +=1
             #if there is no detection set all the speed to zero
-            print("hiç bayrak göremiyorum hızımı sıfırladım.")
-            x,y,z = 0,0,0
+            if no_flag >= counter_no_flag:
+                print("Velocity is zero")
+                x,y,z = 0,0,0
         time.sleep(0.01)
 
     print("Lande geç")
@@ -535,7 +535,7 @@ startTfThread()
 print("kalkış hazırlıklarını yapıyorum (aslında yapmıyom)")
 #readyToTakeoff()
 
-startYaw = vehicle.attitude.yaw
+startYaw = 0
 print("kalkış yapıyom")
 goToLocation(0,0,vision_altitude) # take off
 
@@ -552,9 +552,10 @@ while True:
 
     for flag in flag_objects:
         if (flag.landOrder == i):
-            if(flag.landSiteLetter == 'N'):
+            print(flag.landSiteLetter)
+            if(flag.landSiteLetter == "N"):
                 for land in land_sites:
-                    if (land.flagName == 'N'):
+                    if (land.flagName == "N"):
                         print("arayıpta bulamadığımız bayrağın sırası ve adı:")
                         print(i)
                         print(flag.flagName)
@@ -565,16 +566,17 @@ while True:
                         print("lokasyona vardık.Şimdi bu lokasyonda bulunan bayrağı tanımlamaya çalışıcağız.")
                         defineTheFlag(land.letter)
                         print("bayrağı tanımladık.Döngü başa dönecek.")
+                        break
                         
             else:
-                for land in land_sites:
-                    if (flag.landSiteLetter == land.letter):
+                for site in land_sites:
+                    if (flag.landSiteLetter == site.letter):
                         print("ineceğimiz bağrağın iniş yerini biliyoruz.Bayrak adı:")
                         print(flag.flagName)
                         print("iniş yerinin adı:")
-                        print(land.letter)
+                        print(site.letter)
                         print("Şimdi bu iniş yerine gidiyoruz.")
-                        goToLocation(land.xCoordinate,land.yCoordinate,vision_altitude)
+                        goToLocation(site.xCoordinate,site.yCoordinate,vision_altitude)
                         print("iniş yerine vardık.Şimdi kameraya indiğimiz bayrağın adını verip buna göre hız ile ineceğiz.")
                         landWithVision(flag.flagName)
                         print("iniş bitti motorlar kapandı ve biraz bekleyeceğiz.")
