@@ -338,7 +338,7 @@ def land():
         vehicle._master.set_mode_px4('LAND',None,None)
         print ("Trying land")
         time.sleep(0.3)
-    time.sleep(2)
+    time.sleep(10)
     print ("Landed!")
 
 def tryArming():
