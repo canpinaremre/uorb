@@ -90,10 +90,10 @@ metu = FlagObject("N",2,"metu")
 ort = FlagObject("N",3,"ort")
 landingfield = FlagObject("N",4,"landingfield")
 
-A = LandSiteObject(3.25,3.25,"N","A")
-B = LandSiteObject(3.25,-3.25,"N","B")
-C = LandSiteObject(-3.25,-3.25,"N","C")
-D = LandSiteObject(-3.25,3.25,"N","D")
+A = LandSiteObject(3.0,3.0,"N","A")
+B = LandSiteObject(3.0,-3.0,"N","B")
+C = LandSiteObject(-3.0,-3.0,"N","C")
+D = LandSiteObject(-3.0,3.0,"N","D")
 
 land_sites = [A,B,C,D]
 flag_objects = [stm,metu,ort,landingfield]
@@ -126,17 +126,19 @@ number_of_detection = 0
 
 pixel_square_of_image = 0
 
-pixel_square_needed = 172800 # 3/4 x 3/4
+pixel_square_needed = 60000 # 3/4 x 3/4
+
+landing_area_counter = 3
 
 number_of_being_sure = 3 #how many detections in a row to be sure
 
 counter_no_flag = 3 #cant see flag for this many time and velocity is zero
 
-vision_altitude = 6 #meter
+vision_altitude = 4.5 #meter
 
 distance_tolerance = 0.10 # meter
 
-threshold_for_tf = 0.6 # %60
+threshold_for_tf = 0.5 # %60
 
 time_to_takeoff_again = 3 #second
 
@@ -445,7 +447,7 @@ def defineTheFlag(landSiteLetter):
 
     while True:
         if number_of_detection > temp_number:
-            if detected_flag_name == temp_flag_name:
+            if (detected_flag_name == temp_flag_name) and (detected_flag_name != "turkishflag"):
                 sure_counter +=1
                 print("Detected flag ",temp_flag_name," ",sure_counter," times in a row.")
                 temp_number = number_of_detection
@@ -472,11 +474,11 @@ def defineTheFlag(landSiteLetter):
 
 def landWithVision(flagName):
     #land with vision to the flag
-    global center_of_object,detected_flag_name,number_of_detection,x,y,z,drive_type,drive_with_meter,drive_with_speed,pixel_square_of_image,pixel_square_needed,startYaw,counter_no_flag
+    global center_of_object,detected_flag_name,number_of_detection,x,y,z,drive_type,drive_with_meter,drive_with_speed,pixel_square_of_image,pixel_square_needed,startYaw,counter_no_flag,landing_area_counter
 
    
     temp_number = number_of_detection
-
+    landing_area_counter_temp = 0
     drive_type = drive_with_speed
     x,y,z = 0,0,0
     no_flag = 0
@@ -492,10 +494,13 @@ def landWithVision(flagName):
                 print("Go forward :",xPix," m/s Go right :",yPix," m/s Go Down : 0.1 m/s")
                 x,y = bodyToNedFrame(xPix,yPix,startYaw)
                 z = 0.1 # m/s down speed
-                if pixel_square_of_image >= pixel_square_needed:
+                if (pixel_square_of_image >= pixel_square_needed):
+                    landing_area_counter_temp += 1
+                    if  (landing_area_counter_temp >= landing_area_counter):
+                        x,y,z = 0,0,0
+                        break
                     #go to land mode
-                    x,y,z = 0,0,0
-                    break
+                    
             else:
                 temp_number = number_of_detection
                 no_flag += 1
