@@ -52,7 +52,7 @@ class VideoStream:
         ret = self.stream.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
         ret = self.stream.set(3,resolution[0])
         ret = self.stream.set(4,resolution[1])
-            
+
         # Read first frame from the stream
         (self.grabbed, self.frame) = self.stream.read()
 
@@ -102,7 +102,7 @@ flag_objects = [stm,metu,ort,landingfield]
 x,y,z =0,0,0
 detected_flag_name = "empty for start"
 
-center_of_object = 320,240 
+center_of_object = 320,240
 """
 Obje ekranda sola doğru kaydığı zaman 320 olan yani ilk değer azaldı.
 x bizim için ilerisi demek olduğundan eksenler ters döndürülecek
@@ -134,7 +134,7 @@ number_of_being_sure = 3 #how many detections in a row to be sure
 
 counter_no_flag = 3 #cant see flag for this many time and velocity is zero
 
-vision_altitude = 4.5 #meter
+vision_altitude = 6.5 #meter
 
 distance_tolerance = 0.10 # meter
 
@@ -207,7 +207,7 @@ else:
 if use_TPU:
     # If user has specified the name of the .tflite file, use that name, otherwise use default 'edgetpu.tflite'
     if (GRAPH_NAME == 'detect.tflite'):
-        GRAPH_NAME = 'edgetpu.tflite'       
+        GRAPH_NAME = 'edgetpu.tflite'
 
 # Get path to current working directory
 CWD_PATH = os.getcwd()
@@ -300,7 +300,7 @@ def tf_buffer():
                 xmin = int(max(1,(boxes[i][1] * imW)))
                 ymax = int(min(imH,(boxes[i][2] * imH)))
                 xmax = int(min(imW,(boxes[i][3] * imW)))
-            
+
                 cv2.rectangle(frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 2)
                 pixel_square_of_image = (ymax - ymin) * (xmax - xmin)
 
@@ -308,13 +308,13 @@ def tf_buffer():
 
                 # Draw label
                 object_name = labels[int(classes[i])] # Look up object name from "labels" array using class index
-                
+
                 label = '%s: %d%%' % (object_name, int(scores[i]*100)) # Example: 'person: 72%'
                 labelSize, baseLine = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2) # Get font size
                 label_ymin = max(ymin, labelSize[1] + 10) # Make sure not to draw label too close to top of window
                 cv2.rectangle(frame, (xmin, label_ymin-labelSize[1]-10), (xmin+labelSize[0], label_ymin+baseLine-10), (255, 255, 255), cv2.FILLED) # Draw white box to put label text in
                 cv2.putText(frame, label, (xmin, label_ymin-7), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2) # Draw label text
-                
+
                 detected_flag_name = object_name
                 number_of_detection += 1
         # Draw framerate in corner of frame
@@ -330,7 +330,7 @@ def tf_buffer():
 
         # Press 'q' to quit
         if cv2.waitKey(1) == ord('q'):
-            break    
+            break
 
 def land():
     print("Land !")
@@ -428,7 +428,7 @@ def shutDownTheMotors():
 def goToLocation(xTarget,yTarget,altTarget):
     global startYaw,x,y,z,distance_tolerance
     #goto desired locaiton
-    
+
     x,y = bodyToNedFrame(xTarget,yTarget,startYaw)
     z = -altTarget
 
@@ -467,18 +467,18 @@ def defineTheFlag(landSiteLetter):
     for land in land_sites:
         if(land.letter == landSiteLetter):
             land.flagName = temp_flag_name
-    
+
     for flag in flag_objects:
         if(flag.flagName == temp_flag_name):
             flag.landSiteLetter = landSiteLetter
-    
-    return True 
+
+    return True
 
 def landWithVision(flagName):
     #land with vision to the flag
     global center_of_object,detected_flag_name,number_of_detection,x,y,z,drive_type,drive_with_meter,drive_with_speed,pixel_square_of_image,pixel_square_needed,startYaw,counter_no_flag,landing_area_counter
 
-   
+
     temp_number = number_of_detection
     landing_area_counter_temp = 0
     drive_type = drive_with_speed
@@ -494,7 +494,7 @@ def landWithVision(flagName):
                 xPix = (240 - xCenter) * 0.004 #Max speed is 1 m/s
                 yPix = (yCenter - 320) * 0.003 #Max speed is 1 m/s
                 print("Go forward :",xPix," m/s Go right :",yPix," m/s Go Down : 0.1 m/s")
-                x,y = bodyToNedFrame(xPix,yPix,startYaw)
+                x,y = bodyToNedFrame(xPix,yPix,vehicle.attitude.yaw)
                 z = 0.1 # m/s down speed
                 if (pixel_square_of_image >= pixel_square_needed):
                     landing_area_counter_temp += 1
@@ -502,7 +502,7 @@ def landWithVision(flagName):
                         x,y,z = 0,0,0
                         break
                     #go to land mode
-                    
+
             else:
                 temp_number = number_of_detection
                 no_flag += 1
@@ -518,9 +518,9 @@ def landWithVision(flagName):
             if no_flag >= counter_no_flag:
                 print("Velocity is zero")
                 x,y,z = 0,0,0
-        time.sleep(0.01)
+        time.sleep(0.5)
 
-    
+
     land()
     drive_type = drive_with_meter
     #after landing
@@ -541,7 +541,7 @@ def bodyToNedFrame(xBody,yBody,yawBody):
 def atTheTargetYet(xTarget,yTarget,zTarget):
     global startYaw,distance_tolerance
     #goto desired locaiton
-    
+
     xTarget,yTarget = bodyToNedFrame(xTarget,yTarget,startYaw)
     zTarget = -zTarget
 
@@ -612,5 +612,5 @@ while True:
                         time.sleep(time_to_takeoff_again)
                         print("Taking off again")
                         readyToTakeoff()
-                        
+
                         i += 1
