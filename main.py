@@ -301,27 +301,27 @@ def tf_buffer():
                 ymax = int(min(imH,(boxes[i][2] * imH)))
                 xmax = int(min(imW,(boxes[i][3] * imW)))
             
-                #cv2.rectangle(frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 2)
+                cv2.rectangle(frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 2)
                 pixel_square_of_image = (ymax - ymin) * (xmax - xmin)
 
                 center_of_object = int((xmin+xmax)/2),int((ymin+ymax)/2)
 
                 # Draw label
                 object_name = labels[int(classes[i])] # Look up object name from "labels" array using class index
-                """
+                
                 label = '%s: %d%%' % (object_name, int(scores[i]*100)) # Example: 'person: 72%'
                 labelSize, baseLine = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2) # Get font size
                 label_ymin = max(ymin, labelSize[1] + 10) # Make sure not to draw label too close to top of window
                 cv2.rectangle(frame, (xmin, label_ymin-labelSize[1]-10), (xmin+labelSize[0], label_ymin+baseLine-10), (255, 255, 255), cv2.FILLED) # Draw white box to put label text in
                 cv2.putText(frame, label, (xmin, label_ymin-7), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2) # Draw label text
-                """
+                
                 detected_flag_name = object_name
                 number_of_detection += 1
         # Draw framerate in corner of frame
         #cv2.putText(frame,'FPS: {0:.2f}'.format(frame_rate_calc),(30,50),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,0),2,cv2.LINE_AA)
 
         # All the results have been drawn on the frame, so it's time to display it.
-        #cv2.imshow('Object detector', frame)
+        cv2.imshow('Object detector', frame)
 
         # Calculate framerate
         #t2 = cv2.getTickCount()
@@ -419,6 +419,7 @@ def tryDisArming():
 
 def shutDownTheMotors():
     #stop motors afer landing
+    print("motor shutting down")
     print_status()
     tryDisArming()
     print_status()
@@ -432,6 +433,7 @@ def goToLocation(xTarget,yTarget,altTarget):
     z = -altTarget
 
     while not atTheTargetYet(xTarget,yTarget,altTarget):
+        print("Target: ",xTarget,yTarget,altTarget)
         time.sleep(0.2)
 
     return True
@@ -593,17 +595,22 @@ while True:
             if(flag.landSiteLetter == "N"):
                 for site in land_sites:
                     if (site.flagName == "N"):
+                        print("There was no land site in ",flag.flagName)
+                        print("Going to check location ",site.letter)
                         goToLocation(site.xCoordinate,site.yCoordinate,vision_altitude)
                         defineTheFlag(site.letter)
+                        print("Flag defined.Start loop again.")
                         break
             else:
                 for site in land_sites:
                     if (flag.landSiteLetter == site.letter):
                         print("Going to land in land site ",site.letter," for flag ",flag.flagName)
                         goToLocation(site.xCoordinate,site.yCoordinate,vision_altitude)
+                        print("Start land with vision.Using speed.")
                         landWithVision(flag.flagName)
                         print("sleep for a while")
                         time.sleep(time_to_takeoff_again)
+                        print("Taking off again")
                         readyToTakeoff()
                         
                         i += 1
