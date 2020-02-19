@@ -260,6 +260,16 @@ videostream = VideoStream(resolution=(imW,imH),framerate=30).start()
 
 #for frame1 in camera.capture_continuous(rawCapture, format="bgr",use_video_port=True):
 
+
+def adjust_gamma(image, gamma=0.3):
+
+    invGamma = 1.0 / gamma
+    table = np.array([((gmm / 255.0) ** invGamma) * 255
+        for gmm in np.arange(0, 256)]).astype("uint8")
+
+    return cv2.LUT(image, table)
+
+
 def tf_buffer():
     global videostream,freq,frame_rate_calc,input_std,input_mean,floating_model,width,height,output_details,input_details,interpreter,use_TPU,labels,PATH_TO_LABELS,PATH_TO_CKPT,CWD_PATH,GRAPH_NAME,pkg,MODEL_NAME,LABELMAP_NAME
     global min_conf_threshold,resW,resH,imW,imH,args,detected_flag_name,number_of_detection,center_of_object,pixel_square_of_image
@@ -269,6 +279,7 @@ def tf_buffer():
 
         # Grab frame from video stream
         frame1 = videostream.read()
+        frame1 = adjust_gamma(frame1, gamma=0.4)
 
         # Acquire frame and resize to expected shape [1xHxWx3]
         frame = frame1.copy()
@@ -459,6 +470,8 @@ def defineTheFlag(landSiteLetter):
                 sure_counter = 0
                 temp_flag_name = detected_flag_name
                 temp_number = number_of_detection
+        else:
+            vehicle.attitude.yaw = vehicle.attitude.yaw + 0.78
         time.sleep(0.1)
 
 
@@ -507,6 +520,7 @@ def landWithVision(flagName):
                 temp_number = number_of_detection
                 no_flag += 1
                 print("Wrong flag")
+                vehicle.attitude.yaw = vehicle.attitude.yaw + 0.78
                 #ignore wrong detections and wait with zero speed.
                 if no_flag >= counter_no_flag:
                     print("Velocity is zero")
@@ -514,11 +528,12 @@ def landWithVision(flagName):
         else:
             print("There is no flag")
             no_flag +=1
+            vehicle.attitude.yaw = vehicle.attitude.yaw + 0.78
             #if there is no detection set all the speed to zero
             if no_flag >= counter_no_flag:
                 print("Velocity is zero")
                 x,y,z = 0,0,0
-        time.sleep(0.5)
+        time.sleep(0.1)
 
 
     land()
@@ -537,7 +552,6 @@ def bodyToNedFrame(xBody,yBody,yawBody):
     xNed =  (xBody * math.cos(yawBody) ) - ( yBody * math.sin(yawBody) )
     yNed =  (xBody * math.sin(yawBody) ) + ( yBody * math.cos(yawBody) )
     return xNed,yNed
-
 def atTheTargetYet(xTarget,yTarget,zTarget):
     global startYaw,distance_tolerance
     #goto desired locaiton
