@@ -142,15 +142,15 @@ threshold_for_tf = 0.5 # %60
 
 time_to_takeoff_again = 3 #second
 
-drive_with_meter = 0b111111111000
-drive_with_speed = 0b111111000111
-
+drive_with_meter = 0b101111111000
+drive_with_speed = 0b101111000111
+yaw_global = 0
 drive_type = drive_with_meter #initial
 
 ###################################### FUNCTIONS
 
 def setpoint_buffer():
-    global x,y,z,drive_type
+    global x,y,z,drive_type,yaw_global
     while True:
         msg=vehicle.message_factory.set_position_target_local_ned_encode(
             0,
@@ -160,7 +160,7 @@ def setpoint_buffer():
             x,y,z,
             x,y,z,
             0,0,0,
-            0,0)
+            yaw_global,0)
         vehicle.send_mavlink(msg)
         vehicle.flush()
         time.sleep(0.3)
@@ -451,7 +451,7 @@ def goToLocation(xTarget,yTarget,altTarget):
 
 def defineTheFlag(landSiteLetter):
     #define the flag and write name of it to the landSite
-    global detected_flag_name,number_of_detection,number_of_being_sure
+    global detected_flag_name,number_of_detection,number_of_being_sure,yaw_global
 
     sure_counter = 0
 
@@ -471,7 +471,7 @@ def defineTheFlag(landSiteLetter):
                 temp_flag_name = detected_flag_name
                 temp_number = number_of_detection
         else:
-            vehicle.attitude.yaw = vehicle.attitude.yaw + 0.78
+            yaw_global += 1
         time.sleep(0.1)
 
 
@@ -489,7 +489,7 @@ def defineTheFlag(landSiteLetter):
 
 def landWithVision(flagName):
     #land with vision to the flag
-    global center_of_object,detected_flag_name,number_of_detection,x,y,z,drive_type,drive_with_meter,drive_with_speed,pixel_square_of_image,pixel_square_needed,startYaw,counter_no_flag,landing_area_counter
+    global center_of_object,detected_flag_name,number_of_detection,x,y,z,drive_type,drive_with_meter,drive_with_speed,pixel_square_of_image,pixel_square_needed,startYaw,counter_no_flag,landing_area_counter,yaw_global
 
 
     temp_number = number_of_detection
@@ -520,7 +520,7 @@ def landWithVision(flagName):
                 temp_number = number_of_detection
                 no_flag += 1
                 print("Wrong flag")
-                vehicle.attitude.yaw = vehicle.attitude.yaw + 0.78
+                yaw_global += 1
                 #ignore wrong detections and wait with zero speed.
                 if no_flag >= counter_no_flag:
                     print("Velocity is zero")
@@ -528,12 +528,12 @@ def landWithVision(flagName):
         else:
             print("There is no flag")
             no_flag +=1
-            vehicle.attitude.yaw = vehicle.attitude.yaw + 0.78
+            yaw_global += 1
             #if there is no detection set all the speed to zero
             if no_flag >= counter_no_flag:
                 print("Velocity is zero")
                 x,y,z = 0,0,0
-        time.sleep(0.1)
+        time.sleep(0.35)
 
 
     land()
@@ -591,6 +591,8 @@ startTfThread()
 readyToTakeoff()
 
 startYaw = vehicle.attitude.yaw
+
+yaw_global = startYaw
 
 goToLocation(0,0,vision_altitude) # take off
 
