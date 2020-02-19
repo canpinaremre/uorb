@@ -138,7 +138,7 @@ vision_altitude = 6.5 #meter
 
 distance_tolerance = 0.10 # meter
 
-threshold_for_tf = 0.5 # %60
+threshold_for_tf = 0.4 # %60
 
 time_to_takeoff_again = 3 #second
 
@@ -279,7 +279,7 @@ def tf_buffer():
 
         # Grab frame from video stream
         frame1 = videostream.read()
-        frame1 = adjust_gamma(frame1, gamma=0.4)
+        frame1 = adjust_gamma(frame1, gamma=0.7)
 
         # Acquire frame and resize to expected shape [1xHxWx3]
         frame = frame1.copy()
