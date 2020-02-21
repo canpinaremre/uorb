@@ -90,10 +90,10 @@ metu = FlagObject("N",2,"metu")
 ort = FlagObject("N",3,"ort")
 landingfield = FlagObject("N",4,"landingfield")
 
-A = LandSiteObject(3.0,3.0,"N","A")
-B = LandSiteObject(3.0,-3.0,"N","B")
-C = LandSiteObject(-3.0,-3.0,"N","C")
-D = LandSiteObject(-3.0,3.0,"N","D")
+A = LandSiteObject(3.2,3.2,"N","A")
+B = LandSiteObject(3.2,-3.2,"N","B")
+C = LandSiteObject(-3.2,-3.2,"N","C")
+D = LandSiteObject(-3.2,3.2,"N","D")
 
 land_sites = [A,B,C,D]
 flag_objects = [stm,metu,ort,landingfield]
@@ -134,11 +134,11 @@ number_of_being_sure = 3 #how many detections in a row to be sure
 
 counter_no_flag = 3 #cant see flag for this many time and velocity is zero
 
-vision_altitude = 6.5 #meter
+vision_altitude = 5.5 #meter
 
-distance_tolerance = 0.10 # meter
+distance_tolerance = 0.15 # meter
 
-threshold_for_tf = 0.4 # %60
+threshold_for_tf = 0.3 # %60
 
 time_to_takeoff_again = 3 #second
 
@@ -328,6 +328,8 @@ def tf_buffer():
 
                 detected_flag_name = object_name
                 number_of_detection += 1
+                if (detected_flag_name == "stm"):
+                    pixel_square_of_image = pixel_square_of_image * 2.5
         # Draw framerate in corner of frame
         #cv2.putText(frame,'FPS: {0:.2f}'.format(frame_rate_calc),(30,50),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,0),2,cv2.LINE_AA)
 
@@ -471,8 +473,8 @@ def defineTheFlag(landSiteLetter):
                 temp_flag_name = detected_flag_name
                 temp_number = number_of_detection
         else:
-            yaw_global += 1
-        time.sleep(0.1)
+            yaw_global += 0.01
+        time.sleep(0.15)
 
 
     print("Defined flag is ",temp_flag_name," for land site ",landSiteLetter)
@@ -508,7 +510,7 @@ def landWithVision(flagName):
                 yPix = (yCenter - 320) * 0.003 #Max speed is 1 m/s
                 print("Go forward :",xPix," m/s Go right :",yPix," m/s Go Down : 0.1 m/s")
                 x,y = bodyToNedFrame(xPix,yPix,vehicle.attitude.yaw)
-                z = 0.1 # m/s down speed
+                z = 0.18 # m/s down speed
                 if (pixel_square_of_image >= pixel_square_needed):
                     landing_area_counter_temp += 1
                     if  (landing_area_counter_temp >= landing_area_counter):
@@ -520,7 +522,7 @@ def landWithVision(flagName):
                 temp_number = number_of_detection
                 no_flag += 1
                 print("Wrong flag")
-                yaw_global += 1
+                yaw_global += 0.01
                 #ignore wrong detections and wait with zero speed.
                 if no_flag >= counter_no_flag:
                     print("Velocity is zero")
@@ -528,12 +530,12 @@ def landWithVision(flagName):
         else:
             print("There is no flag")
             no_flag +=1
-            yaw_global += 1
+            yaw_global += 0.01
             #if there is no detection set all the speed to zero
             if no_flag >= counter_no_flag:
                 print("Velocity is zero")
                 x,y,z = 0,0,0
-        time.sleep(0.35)
+        time.sleep(0.1)
 
 
     land()
