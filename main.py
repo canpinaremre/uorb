@@ -134,7 +134,7 @@ number_of_being_sure = 3 #how many detections in a row to be sure
 
 counter_no_flag = 3 #cant see flag for this many time and velocity is zero
 
-vision_altitude = 5.5 #meter
+vision_altitude = 4.5 #meter
 
 distance_tolerance = 0.15 # meter
 
