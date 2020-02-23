@@ -103,25 +103,7 @@ x,y,z =0,0,0
 detected_flag_name = "empty for start"
 
 center_of_object = 320,240
-"""
-Obje ekranda sola doğru kaydığı zaman 320 olan yani ilk değer azaldı.
-x bizim için ilerisi demek olduğundan eksenler ters döndürülecek
-y,x = center_of_object
-şimdi x,y olarak baktığımızda obje sola doğru kaydığında y değeri azalıyor.
-sol taraf 0 en sağ taraf 640 demek (y ekseni)
-obje yukarı doğru giderken x azalıyor
-en üst taraf 0 en alt taraf 480 demek ( x ekseni)
-sol üst köşe 0,0 sağ alt köşe 480,640
-kamera düz bir şekilde drone altına takılırsa eğer
-üst kısım ilerisi alt kısım geriyi sağ sağı ve sol solu temsil eder.
-cisim kamerada üstte yani droneun ilerisinde gözüküyor ise drone ileri gitmelidir ortalamak için.
-x ekseninde hareket orta nokta olan 240 dan ne kadar az ise o kadar ileri.
-240-0 arası ise ileri
-y ekseni için cisim kamerada eğer sağ tarafta ise
-drone sağa gitmelidir.
-320 y ekseninin ortası olduğuna göre
-320 den ne kadar fazla ise o kadar sağa gitmelidir.cisim sağa gittikçe y ekseni artar çünkü.
-"""
+
 number_of_detection = 0
 
 pixel_square_of_image = 0
@@ -222,9 +204,6 @@ PATH_TO_LABELS = os.path.join(CWD_PATH,MODEL_NAME,LABELMAP_NAME)
 with open(PATH_TO_LABELS, 'r') as f:
     labels = [line.strip() for line in f.readlines()]
 
-# Have to do a weird fix for label map if using the COCO "starter model" from
-# https://www.tensorflow.org/lite/models/object_detection/overview
-# First label is '???', which has to be removed.
 if labels[0] == '???':
     del(labels[0])
 
