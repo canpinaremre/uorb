@@ -579,7 +579,7 @@ yaw_global = startYaw
 drive_type = drive_with_speed
 
 x,y = 0,0
-z = -0.75
+z = -0.4
 
 while True:
     if vehicle.location.local_frame.down <= -4.5:
