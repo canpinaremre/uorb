@@ -90,10 +90,10 @@ metu = FlagObject("N",2,"metu")
 ort = FlagObject("N",3,"ort")
 landingfield = FlagObject("N",4,"landingfield")
 
-A = LandSiteObject(3.2,3.2,"N","A")
-B = LandSiteObject(3.2,-3.2,"N","B")
-C = LandSiteObject(-3.2,-3.2,"N","C")
-D = LandSiteObject(-3.2,3.2,"N","D")
+A = LandSiteObject(3.0,3.0,"N","A")
+B = LandSiteObject(3.0,-3.0,"N","B")
+C = LandSiteObject(-3.0,-3.0,"N","C")
+D = LandSiteObject(-3.0,3.0,"N","D")
 
 land_sites = [A,B,C,D]
 flag_objects = [stm,metu,ort,landingfield]
@@ -510,7 +510,7 @@ def landWithVision(flagName):
                 yPix = (yCenter - 320) * 0.003 #Max speed is 1 m/s
                 print("Go forward :",xPix," m/s Go right :",yPix," m/s Go Down : 0.1 m/s")
                 x,y = bodyToNedFrame(xPix,yPix,vehicle.attitude.yaw)
-                z = 0.18 # m/s down speed
+                z = 0.14 # m/s down speed
                 if (pixel_square_of_image >= pixel_square_needed):
                     landing_area_counter_temp += 1
                     if  (landing_area_counter_temp >= landing_area_counter):
@@ -573,6 +573,7 @@ def atTheTargetYet(xTarget,yTarget,zTarget):
     return False
 
 ##################################### START
+vehicle.home_location = vehicle.location.global_frame
 home_position_set = False
 #Create a message listener for home position fix
 @vehicle.on_message('HOME_POSITION')
